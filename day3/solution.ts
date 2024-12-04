@@ -259,6 +259,7 @@ function executeValidInstruction<I extends ValidInstruction>(instruction: I, env
             if(environment.executeInstruction){
                 environment.output += instruction.arguments.reduce((arg, res) => arg * res, 1);
             }
+            break;
     }
 }
 
