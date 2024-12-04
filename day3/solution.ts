@@ -107,7 +107,7 @@ function readArguments(lexer: Lexer): Expression[] | null {
   const args: Expression[] = [];
 
   // try read till end of string
-  while (lexer.ch !== '\x00') {
+  while (lexer.ch !== EOF) {
 
     // lexer points to )... or args...)...
     if (compareCurrentChar(lexer, RPAREN)) {
