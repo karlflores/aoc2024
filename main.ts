@@ -1,4 +1,4 @@
-import solution from "./day3/solution";
+import solution from "./day4/solution";
 
 function main(): void {
     solution(); 
