@@ -37,6 +37,7 @@ const DO = "do";
 const DONT = "don't";
 const MUL = "mul";
 
+// LEXER
 function readChar(lexer: Lexer) : void {
     if(lexer.readPosition >= lexer.input.length){
         lexer.ch = '\0';
@@ -194,6 +195,7 @@ async function parseInputFile(path: string) : Promise<string> {
     return await fs.readFile(path, 'ascii');
 }
 
+// INTERPRETER
 async function executeCode(path: string) : Promise<number> {
     const input = await parseInputFile(path);
 
