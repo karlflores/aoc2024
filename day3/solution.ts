@@ -103,21 +103,25 @@ function readString(lexer: Lexer) : string {
 }
 
 function readArguments(lexer: Lexer) : Expression[] | null {
-    // the string will look either like 123,23,23,44 or will be invalid. If it is invalid we can return null
+    // lexer will now point to 123,23,23,44 or invalid
     const args: Expression[] = [];
-    while(lexer.ch !== '\x00') {
 
+    // try read till end of string
+    while(lexer.ch !== '\x00') {
+        
+        // lexer points to )... or args...)...
         if(compareCurrentChar(lexer, RPAREN)){
             break;
         }
 
+        // either the lexer points to num,num...)... or num)... or ,num)...
+
         // try to read a comma
-        // we are not parsing a number or comma
         if(compareCurrentChar(lexer, COMMA)){
             readChar(lexer);
         }
 
-        // either we have a number, or the arguments are invalid
+        // either the lexer points to num,num...)... or num)... 
         if(!isNumber(lexer.ch)){
             return null;
         }
@@ -138,23 +142,25 @@ function readArguments(lexer: Lexer) : Expression[] | null {
 }
 
 function readNextInstruction(lexer: Lexer) : Function | null {
+    // input takes the form ident(...
     const identifier = readNextIdentifier(lexer);
     if(identifier === null) {
         return null;
     }
 
-    // now we have to read the next token 
+    // lexer is now at (args...
     if(!compareCurrentChar(lexer,LPAREN)){
         return readNextInstruction(lexer);
     }
     readChar(lexer);
 
-    // now we have an identifier -- we can now read the arguments
+    // lexer is now at args...
     const args = readArguments(lexer);
     if(args === null){
         return readNextInstruction(lexer);
     }
 
+    // successfully read an instruction, now return
     return {
         identifier,
         arguments: args
