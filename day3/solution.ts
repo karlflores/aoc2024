@@ -264,7 +264,6 @@ function executeValidInstruction<I extends ValidInstruction>(instruction: I, env
   }
 }
 
-// we only care about the following characters
 export default function (): void {
   executeCode('day3/input.txt').then(
     d => {
