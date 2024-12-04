@@ -1,26 +1,19 @@
-
 import {promises as fs} from 'fs'
 
-type Mul = "mul";
-type Do = "do";
-type Dont = "don't";
-type InstructionIdentifier = Mul | Do | Dont
-
 type Identifier = string;
-
 type Expression = number;
-
-type Instruction = Do | Dont | MulInstruction;
-
-type MulInstruction = {
-    l: number,
-    r: number
-}
 
 type Function = {
     identifier: Identifier
     arguments: Expression[]
 }
+
+type Instruction = Function;
+
+type ValidInstruction = 
+    { identifier: "do", arguments: [] } | 
+    { identifier: "don't", arguments: [] } | 
+    { identifier: "mul", arguments: [number, number] } ;
 
 type Lexer = {
     input: string;
@@ -28,6 +21,21 @@ type Lexer = {
     readPosition: number;
     ch: string;
 }
+
+type Environment = {
+    executeInstruction: boolean,
+    output: number;
+};
+
+const APOSTROPHE = "'";
+const LPAREN = "(";
+const RPAREN = ")";
+const COMMA = ",";
+const EOF = "\x00";
+
+const DO = "do";
+const DONT = "don't";
+const MUL = "mul";
 
 function readChar(lexer: Lexer) : void {
     if(lexer.readPosition >= lexer.input.length){
@@ -39,73 +47,49 @@ function readChar(lexer: Lexer) : void {
     lexer.readPosition++;
 }
 
-function readNextIdentifier(lexer: Lexer) : InstructionIdentifier | null {
+function readNextIdentifier(lexer: Lexer) : Identifier | null {
     if(lexer.readPosition >= lexer.input.length){
         return null;
     }
 
     // assume that an identifer is just a string of letters 
     while(!isLetter(lexer.ch)){
-        if(lexer.ch == '\x00'){
+        if(compareCurrentChar(lexer, EOF)){
             break;
         }        
         readChar(lexer);
     }
 
     // we have reached end of file
-    if(lexer.ch == '\x00'){
+    if(compareCurrentChar(lexer, EOF)){
         return null;
     }
 
     // lexer is now on a letter so lets attempt to read an identifier
+    const ident = readString(lexer);
 
-    let ident = readString(lexer);
-
-    // now test whether the identifier ends with do or don -- if they do replace the ident
-    if(ident.endsWith('do')){
-        ident = 'do'
-    } else if (ident.endsWith('don')) {
-        ident = 'don'
+    // now an identifier can have an apostrophe so we need to parse both forms 
+    // str and str'str
+    if(compareCurrentChar(lexer, LPAREN)){
+        return ident;
     }
 
-
-    let compareChar = '('
-    // now we have a substring note that if we have don - this could be 't
-    // switch based on the current input
-    switch(ident){
-        // this might be a mul token
-        case 'mul':
-            if(lexer.ch !== compareChar){
-                return readNextIdentifier(lexer);
-            }
-            return 'mul';
-        // this might be a do / don't token
-        case 'do':
-            if(lexer.ch !== compareChar){
-                return readNextIdentifier(lexer);
-            }
-            return "do";
-        case 'don':
-            compareChar = "'";
-            if(lexer.ch !== compareChar){
-                return readNextIdentifier(lexer);
-            }
-            readChar(lexer);
-            compareChar = "t";
-            if(lexer.ch !== compareChar){
-                return readNextIdentifier(lexer);
-            }
-            readChar(lexer);
-
-            // then we can read a string again 
-            compareChar = '('
-            if(lexer.ch !== compareChar){
-                return readNextIdentifier(lexer);
-            }
-            return "don't";
-        default: 
-            return readNextIdentifier(lexer);
+    if(!compareCurrentChar(lexer, APOSTROPHE)){
+        return readNextIdentifier(lexer);
     }
+
+    readChar(lexer);
+
+    if(!isLetter(lexer.ch)){
+        return readNextIdentifier(lexer);
+    }
+
+    const strEnd = readString(lexer);
+    if(!compareCurrentChar(lexer, LPAREN)){
+        return readNextIdentifier(lexer);
+    }
+
+    return `${ident}'${strEnd}`;
 }
 
 function readString(lexer: Lexer) : string {
@@ -117,67 +101,67 @@ function readString(lexer: Lexer) : string {
     return lexer.input.substring(start, lexer.position);
 }
 
-function readNextInstruction(lexer: Lexer) : Instruction | null {
-    const identifer = readNextIdentifier(lexer);
-    if(identifer === null) {
+function readArguments(lexer: Lexer) : Expression[] | null {
+    // the string will look either like 123,23,23,44 or will be invalid. If it is invalid we can return null
+    const args: Expression[] = [];
+    while(lexer.ch !== '\x00') {
+
+        if(compareCurrentChar(lexer, RPAREN)){
+            break;
+        }
+
+        // try to read a comma
+        // we are not parsing a number or comma
+        if(compareCurrentChar(lexer, COMMA)){
+            readChar(lexer);
+        }
+
+        // either we have a number, or the arguments are invalid
+        if(!isNumber(lexer.ch)){
+            return null;
+        }
+
+        const num = readNumber(lexer);
+
+        args.push(num);
+    }
+
+    if(!compareCurrentChar(lexer, RPAREN)){
         return null;
     }
 
-    let compareChar = '(';
+    // we have an RPAREN
+    readChar(lexer);
+
+    return args;
+}
+
+function readNextInstruction(lexer: Lexer) : Function | null {
+    const identifier = readNextIdentifier(lexer);
+    if(identifier === null) {
+        return null;
+    }
+
     // now we have to read the next token 
-    if(lexer.ch !== compareChar){
+    if(!compareCurrentChar(lexer,LPAREN)){
         return readNextInstruction(lexer);
     }
     readChar(lexer);
 
-    // we either have do( or don't(
-    if(identifer !== 'mul') {
-        compareChar = ')'
-        if(lexer.ch !== compareChar){
-            return readNextInstruction(lexer);
-        }
-        readChar(lexer);
-        return identifer;
-    }
-
-    // now we have to try read a number
-    if(!isNumber(lexer.ch)){
+    // now we have an identifier -- we can now read the arguments
+    const args = readArguments(lexer);
+    if(args === null){
         return readNextInstruction(lexer);
     }
-
-    const num1 = readNumber(lexer);
-    if(num1 === null){
-        return readNextInstruction(lexer);
-    }
-
-    compareChar = ','
-    if(lexer.ch !== compareChar){
-        return readNextInstruction(lexer);
-    }
-    readChar(lexer);
-
-    // now we have to try read a number
-    if(!isNumber(lexer.ch)){
-        return readNextInstruction(lexer);
-    }
-
-    const num2 = readNumber(lexer);
-    if(num2 === null) {
-        return readNextInstruction(lexer);
-    }
-
-    compareChar = ')'
-
-    if(lexer.ch !== compareChar){
-        return readNextInstruction(lexer);
-    }
-    readChar(lexer);
 
     return {
-        l: num1,
-        r: num2
+        identifier,
+        arguments: args
     }
+}
 
+function compareCurrentChar(lexer: Lexer, char: string) : boolean {
+    return lexer.ch === char;
 }
 
 function readNumber(lexer: Lexer) : number | null { 
@@ -206,42 +190,75 @@ function createLexer(input: string): Lexer {
     };
 }
 
-async function parseInput(path: string) : Promise<string> {
+async function parseInputFile(path: string) : Promise<string> {
     return await fs.readFile(path, 'ascii');
 }
 
 async function executeCode(path: string) : Promise<number> {
-    const input = await parseInput(path);
+    const input = await parseInputFile(path);
 
     const lexer = createLexer(input);
-    let total = 0;
-    let executeInstruction = true;
-    // read the first mul instruction
+    const environment: Environment = {
+        executeInstruction: true,
+        output: 0,
+    };
+
+    // Get instructions from input code and try to execute
     let instruction = readNextInstruction(lexer);
     while(instruction !== null){
-        switch(instruction){
-            case "do": 
-                executeInstruction = true;
-                break;
-            case "don't":
-                executeInstruction = false;
-                break;
-            default: 
-                total += executeInstruction ? evaluate(instruction) : 0;
-                
-        }
+        executeInstruction(instruction, environment);
         instruction = readNextInstruction(lexer);
     }
-
-    return total;
-
+    return environment.output;
 }
 
-function evaluate(instruction: MulInstruction) : number {
-    return instruction.l * instruction.r;
+function executeInstruction(instruction: Instruction, environment: Environment) : void {
+    // test whether the current instruction is valid and execute it if it is 
+    const validInstruction = GetValidInstruction(instruction);
+    if(validInstruction === null){
+        return;
+    }
+    executeValidInstruction(validInstruction, environment);
 }
 
+// coerce instruction into valid format for execution
+function GetValidInstruction(instruction: Instruction): ValidInstruction | null {
+    if(instruction.identifier.endsWith(DO)){
+        return {
+            identifier: DO,
+            arguments: []
+        };
+    } 
+    else if(instruction.identifier.endsWith(DONT)){
+        return {
+            identifier: DONT,
+            arguments: []
+        };
+    }
+    else if(instruction.identifier.endsWith(MUL) && instruction.arguments.length === 2){
+        const [arg1, arg2] = instruction.arguments;
+        return {
+            identifier: MUL,
+            arguments: [arg1, arg2]
+        };
+    }
+    return null;
+}
 
+function executeValidInstruction<I extends ValidInstruction>(instruction: I, environment: Environment) {
+    switch(instruction.identifier){
+        case DO:
+            environment.executeInstruction = true;
+            break;
+        case DONT:
+            environment.executeInstruction = false;
+            break;
+        case MUL:
+            if(environment.executeInstruction){
+                environment.output += instruction.arguments.reduce((arg, res) => arg * res, 1);
+            }
+    }
+}
 
 // we only care about the following characters
 export default function() : void{
