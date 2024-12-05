@@ -67,6 +67,44 @@ function isPageValid(pageIdx: number, forwardRules: Rules, backwardRules: Rules,
     return backValid && frontValid;
 }
 
+const arePreviousPagesValid = (forwardRules: Rules, rest: Update, from: Page) : boolean =>
+    rest.reduce((acc, to) => !forwardRules.get(from).has(to) && acc , true);
+
+type Combination = [Page[], Page[]]
+
+function generateCorrectOrdering(forwardRules: Rules, updates: Update) : Update | null{
+
+    // dfs the solution
+    const initCominbation = [...updates];
+    const correctUpdate : Page[] = [];
+    const queue: Combination[] = [[correctUpdate, initCominbation]];
+
+    const visited = new Set<Page[]>();
+    // treat options as a queue 
+    while(queue.length > 0) { 
+        // choose an element from the available options -- dequeue element 
+        const [update, options] = queue.pop();
+
+        if(update.length === updates.length){
+            return update;
+        }
+        
+        for(let i = 0; i < options.length ; i++){
+            // only push valid combinations into the queue. 
+            if(arePreviousPagesValid(forwardRules, update, options[i])){
+                const newUpdate = [...update, options[i]];
+                if(!visited.has(newUpdate)){
+                    queue.push([[...update, options[i]], options.filter((_,idx) => idx !== i)]);
+                }
+            } else {
+                continue; 
+            }
+        }
+    }
+
+    return null;
+}
+
 function isUpdateValid(updates: Update, forwardRules: Rules, backwardRules: Rules) : boolean {
     return updates.reduce((acc, _, idx) => acc && isPageValid(idx, forwardRules, backwardRules, updates), true);
 }
@@ -75,10 +113,12 @@ export default function solution(){
     parseInputFile('day5/input.txt').then((([backward, forward, updates]) => {
         const valid = updates.filter((u) => isUpdateValid(u, forward, backward));
         const invalid = updates.filter((u) => !isUpdateValid(u, forward, backward));
-        console.log(invalid);
         console.log(valid.reduce((acc, rule) => {
             const idx = Math.floor(rule.length / 2);
             return acc + rule[idx];
         }, 0));
+
+        // now for each invalid update we can generate the valid combinations
+        console.log(invalid.map(i => generateCorrectOrdering(forward, i)).reduce((acc, rule) => acc + rule[Math.floor(rule.length / 2)], 0));
     }));
 }
