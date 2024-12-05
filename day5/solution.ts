@@ -101,8 +101,11 @@ function generateCorrectOrdering(forwardRules: Rules, updates: Update) : Update 
             }
         }
     }
-
     return null;
+}
+
+function sortToCorrectOrdering(rules: Rules, update: Update) : Update {
+    return update.sort((a,b) => rules.get(a).has(b) ? 1 : -1 );
 }
 
 function isUpdateValid(updates: Update, forwardRules: Rules, backwardRules: Rules) : boolean {
@@ -113,12 +116,19 @@ export default function solution(){
     parseInputFile('day5/input.txt').then((([backward, forward, updates]) => {
         const valid = updates.filter((u) => isUpdateValid(u, forward, backward));
         const invalid = updates.filter((u) => !isUpdateValid(u, forward, backward));
-        console.log(valid.reduce((acc, rule) => {
-            const idx = Math.floor(rule.length / 2);
-            return acc + rule[idx];
-        }, 0));
+
+        console.log(
+            "Part 1: ", 
+            valid.reduce((acc, rule) => {
+                const idx = Math.floor(rule.length / 2);
+                return acc + rule[idx];
+            }, 0)
+        );
 
         // now for each invalid update we can generate the valid combinations
-        console.log(invalid.map(i => generateCorrectOrdering(forward, i)).reduce((acc, rule) => acc + rule[Math.floor(rule.length / 2)], 0));
+        console.log(
+            "Part 2: ", 
+            invalid.map(i => sortToCorrectOrdering(forward, i)).reduce((acc, rule) => acc + rule[Math.floor(rule.length / 2)], 0)
+        );
     }));
 }
