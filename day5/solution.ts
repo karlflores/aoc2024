@@ -56,27 +56,20 @@ function isPageValid(pageIdx: number, forwardRules: Rules, backwardRules: Rules,
         return rest.reduce((acc, to) => !forwardRules.get(from).has(to) && acc , true);
     }
 
-    let forward = forwardRules.get(page);
-    if(!forward) forward = new Set();
-    let backward = backwardRules.get(page) ?? new Set();
-    if(!backward) backward = new Set();
+    const forward = forwardRules.get(page);
+    const backward = backwardRules.get(page);
     const back = [...updates];
     const front = back.splice(pageIdx);
 
-    // check back elements first 
+    // now we just need to check the elements before the page and after the page to check if the rules are satisfied   
     const backValid = back.reduce((acc,to) => !forward.has(to) && acc, true);
     const frontValid = front.reduce((acc,to) => !backward.has(to) && acc, true);
-
-    // now we just need to check the elements before the page and after the page to check if the rules are satisfied 
-    
     return backValid && frontValid;
-
 }
 
 function isUpdateValid(updates: Update, forwardRules: Rules, backwardRules: Rules) : boolean {
     return updates.reduce((acc, _, idx) => acc && isPageValid(idx, forwardRules, backwardRules, updates), true);
 }
-
 
 export default function solution(){
     parseInputFile('day5/input.txt').then((([backward, forward, updates]) => {
