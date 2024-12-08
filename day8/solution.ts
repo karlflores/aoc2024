@@ -21,11 +21,11 @@ async function parseInputFile(
     const nodes = row.split("")
       .map((n, c) => {
         if (n !== EMPTY) {
-          if(!positionMap.has(n)){
+          if (!positionMap.has(n)) {
             positionMap.set(n, []);
           }
           const positions = positionMap.get(n);
-          positions.push([r,c]);
+          positions.push([r, c]);
         }
         return n;
       });
@@ -37,16 +37,16 @@ async function parseInputFile(
 
 function* generateAntinodes(p1: Position, [offR, offC]: Position): Generator<Position> {
   let [r, c] = p1;
-  while(true){
+  while (true) {
     r += offR
     c += offC
     yield [r, c];
   }
 }
 
-const getAntinodeHash = ([r, c]: Position) : AntinodeHash => `${r},${c}`;
+const getAntinodeHash = ([r, c]: Position): AntinodeHash => `${r},${c}`;
 
-const getOffset = (p1: Position, p2: Position) : [number, number] => [(p2[0]-p1[0]),(p2[1]-p1[1])];
+const getOffset = (p1: Position, p2: Position): [number, number] => [(p2[0] - p1[0]), (p2[1] - p1[1])];
 
 const generateValidAntinodes = (node: Position, offset: Position) => {
   const positions: Position[] = [];
@@ -56,40 +56,40 @@ const generateValidAntinodes = (node: Position, offset: Position) => {
     const cols = map[0].length;
 
     // is coord inbounds
-    const inBounds = ([r, c]: Position): boolean => r >= 0 && r < rows && c >= 0 && c < cols; 
+    const inBounds = ([r, c]: Position): boolean => r >= 0 && r < rows && c >= 0 && c < cols;
 
-    while(true){
+    while (true) {
       const antinode: Position = generator.next().value;
-      if(!inBounds(antinode)){
+      if (!inBounds(antinode)) {
         break;
       }
       positions.push(antinode);
     }
-    return positions; 
+    return positions;
   }
 }
 
-function getAntinodes(map: NodeMap, positions: NodePositions) : Set<AntinodeHash> {
+function getAntinodes(map: NodeMap, positions: NodePositions): Set<AntinodeHash> {
   const antinodes = new Set<AntinodeHash>();
   Array.from(positions.keys())
     .map(p => {
       const node = positions.get(p);
       // iterate through the pairs of nodes
-      for(let i = 0 ; i < node.length ; i++){
-        for(let j = i + 1 ; j < node.length ; j++) {
+      for (let i = 0; i < node.length; i++) {
+        for (let j = i + 1; j < node.length; j++) {
           const [offR, offC] = getOffset(node[i], node[j]);
           // first start with the antinodes going in the relative negative direction
           generateValidAntinodes(node[j], [-offR, -offC])(map).map(p => antinodes.add(getAntinodeHash(p)));
 
           // then generate the antinodes going in the relative positive direction
-          generateValidAntinodes(node[i], [offR, offC])(map).map(p => antinodes.add(getAntinodeHash(p))); 
+          generateValidAntinodes(node[i], [offR, offC])(map).map(p => antinodes.add(getAntinodeHash(p)));
+        }
       }
-    }
-  });
+    });
   return antinodes;
 }
 
-export default function(){
+export default function () {
   parseInputFile("day8/input.txt").then(([map, positions]) => {
     const antinodes = getAntinodes(map, positions);
     console.log("Part 2: ", antinodes.size);
