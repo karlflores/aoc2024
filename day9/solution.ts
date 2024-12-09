@@ -1,9 +1,12 @@
 import { promises as fs } from "fs";
 
 type File = number;
+type Space = File | null;
 type Block = {
-  memory: File[]
-  freeSpace: number
+  headSpace: number
+  head: File[]
+  tail: File[]
+  tailSpace: number
 }
 
 async function parseInputFile(
@@ -17,62 +20,53 @@ async function parseInputFile(
     const usedSpace = str.shift();
     const freeSpace = str.shift();
     blocks.push({
-      memory: Array.from(Array(usedSpace).keys()).map(() => id),
-      freeSpace : freeSpace ?? 0
+      headSpace: 0,
+      head: Array.from(Array(usedSpace).keys()).map(() => id),
+      tail: [],
+      tailSpace : freeSpace ?? 0,
     });
     id++;
   }  
   return blocks;
 }
 
-function sortBlocks(blocks: Block[]) : File[] {
+function findFreeBlockIndex(blocks: Block[], src: Block, startIdx: number, endIdx: number) : number | null {
+  for(let i = startIdx ; i <= endIdx ; i++) {
+    if(blocks[i].tailSpace >= src.head.length) return i;
+  }
+  return null;
+}
+
+function sortBlocks(blocks: Block[]) : Space[] {
   // assume we are going to be moving files into the first block first 
 
   let srcIdx = blocks.length - 1;
-  let targetIdx = 0;
-  while(targetIdx < srcIdx){
-    // first we want to assume that this is the block we are reading into 
-    if(blocks[targetIdx].freeSpace === 0){
-      targetIdx++;
-      continue;
+  while(srcIdx >= 0){
+
+    // now find the free block index to insert into
+    const targetIdx = findFreeBlockIndex(blocks, blocks[srcIdx], 0, srcIdx-1);
+
+    if(targetIdx !== null){
+      blocks[targetIdx].tail = [...blocks[targetIdx].tail, ...blocks[srcIdx].head]
+      blocks[targetIdx].tailSpace -= blocks[srcIdx].head.length;
+      blocks[srcIdx].headSpace += blocks[srcIdx].head.length;
+      blocks[srcIdx].head = [];
     }
-
-    // the target block has free space to utilise
-
-    // now we can try to move as much free files as we can in the target block
-    while(blocks[targetIdx].freeSpace > 0 && srcIdx > targetIdx){
-      if(blocks[srcIdx].memory.length === 0) {
-        srcIdx--;
-        continue;
-      }
-
-      if(srcIdx <= targetIdx){
-        blocks[Math.min(srcIdx,targetIdx)].freeSpace = 0;
-        break;
-      }
-
-      blocks[targetIdx].memory.push(blocks[srcIdx].memory.pop());
-      blocks[targetIdx].freeSpace--;
-    }
+    srcIdx--;
   }
   return flattenBlocks(blocks);
 }
 
-function flattenBlocks(blocks: Block[]) : File[] {
+function flattenBlocks(blocks: Block[]) : (File | null)[] {
   let files: File[] = [];
   for(const b of blocks) {
-    if(b.memory.length === 0) {
-      break;
-    }
-
-    // else we just want to keep spreading the files 
-    files = files.concat(b.memory);
+    files = [...files, ...Array.from(Array(b.headSpace).keys()).map(() => null), ...b.head, ...b.tail, ...Array.from(Array(b.tailSpace).keys()).map(() => null)];
   }
   return files;
 }
 
 export default function () {
   parseInputFile("day9/input.txt").then(b => {
-    console.log(sortBlocks(b).reduce((acc, id, i) => acc + id * i, 0));
+    console.log(sortBlocks(b).reduce((acc, id, i) => acc + (id !== null ? id * i : 0), 0));
   });
 }
