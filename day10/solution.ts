@@ -41,12 +41,7 @@ function getOffset(direction: Direction): Position {
 
 function getTrailHead(map: Map, [r, c]: Position, visited: Set<PositionKey>) : number {
   if(map[r][c] === 9){
-    if(visited.has(`${r}-${c}`)){
-      return 0;
-    } else {
-      visited.add(`${r}-${c}`);
-      return 1;
-    }
+    return 1;
   }
 
   const nextDirection = getNextDirection([r, c], map); 
