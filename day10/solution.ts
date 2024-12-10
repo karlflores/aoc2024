@@ -45,7 +45,6 @@ function getTrailHead(map: Map, [r, c]: Position, visited: Set<PositionKey>) : n
   }
 
   const nextDirection = getNextDirection([r, c], map); 
-
   if(!nextDirection || nextDirection.length === 0){
     return 0
   }
