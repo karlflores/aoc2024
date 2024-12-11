@@ -72,17 +72,17 @@ function applyRule(stone: Stone, count: number) : ActionResult[] {
     return Rules.default(stone, count);
 }
 
-
 function blink(state: StoneState) : StoneState{
     const nextState = new Map<number, number>();
 
-    // now for each stone in the state we need to do the action 
+    // generate next state
     for(const [stone, count] of Array.from(state.entries())){
         const res = applyRule(stone, count);
         res.map(r =>  nextState.has(r.stone) 
             ? nextState.set(r.stone, nextState.get(r.stone)+r.count) 
             : nextState.set(r.stone, r.count))
     }
+
     return nextState;
 }
 
