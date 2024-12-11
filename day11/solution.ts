@@ -1,99 +1,113 @@
-//const input: string = "8793800 1629 65 5 960 0 138983 85629" as const;
-const input: string = "1" as const;
+const input: string = "8793800 1629 65 5 960 0 138983 85629" as const;
+// const input: string = "125 17" as const;
 
-type Stone = [number, number] | [number];
+type Stone = number;
 
-type Action = (stone: Stone) => Stone
-type Rule = (s: Stone) => boolean;
+type Action = (stone: Stone, count: number) => [ActionResult] | [ActionResult, ActionResult]
+type Predicate = (s: Stone) => boolean;
 
-type RuleBook = {
-    predicate: Rule, 
+type Rule = {
+    predicate: Predicate, 
     action: Action
-}[]
+}
 
 type StoneState = Map<number, number>;
 
-type Process = {
-    ruleBook: RuleBook,
+type ActionResult = {
+    stone: Stone,
+    count: number
+}
+
+type StateRules = {
+    rules: Rule[],
     default: Action
 }
 
-const multiplyBy2024 = (stone: Stone) : Stone => [stone[0] * 2024];
+const multiplyBy2024 = (stone: Stone, count: number) : [ActionResult] => {
+    return [{
+        count,
+        stone: stone * 2024,
+    }];
+}
 
-const splitStone = (stone: Stone) : Stone => {
-    const str = `${stone[0]}`;
+const splitStone = (stone: Stone, count: number) : [ActionResult, ActionResult] => {
+    const str = `${stone}`;
     const strLen = str.length / 2;
-    return [Number(str.substring(0, strLen)), Number(str.substring(strLen))];
+    return [
+        {
+            count,
+            stone: Number(str.substring(0, strLen)),
+        }, 
+        {
+            count,
+            stone: Number(str.substring(strLen))
+        }
+    ];
 }
 
-const changeStone = (stone: Stone) : Stone => {
-    return [1];
+const changeStone = (stone: Stone, count: number) : [ActionResult] => {
+    return [{
+        stone: 1,
+        count,
+    }];
 }
 
-const isStoneAZero = (stone: Stone) => stone[0] === 0;
-const isStoneEven = (stone: Stone) => `${stone[0]}`.length % 2 === 0;
+const isStoneAZero = (stone: Stone) => stone === 0;
+const isStoneEven = (stone: Stone) => `${stone}`.length % 2 === 0;
 
-const Rules: Process = {
-    ruleBook: [
+const Rules: StateRules = {
+    rules: [
         {predicate: isStoneAZero, action: changeStone},
         {predicate: isStoneEven, action: splitStone}
     ],
     default: multiplyBy2024
-}
+} as const;
 
-function singleStoneBlink(stone: Stone, memo: Map<number, Stone>): Stone {
-    if(memo.has(stone[0])) return memo.get(stone[0])
-    for( let ruleIdx = 0 ; ruleIdx < Rules.ruleBook.length ; ruleIdx++){ 
-        const rule = Rules.ruleBook[ruleIdx];
+function applyRule(stone: Stone, count: number) : ActionResult[] {
+    for(const rule of Rules.rules){
         if(rule.predicate(stone)){
-            const s = rule.action(stone);
-            const old = stone[0];
-            memo.set(old, s);
-            return s;
+            return rule.action(stone, count);
         }
     }
-    return Rules.default(stone);
+    return Rules.default(stone, count);
 }
 
-function blink(stones: Stone[], stoneMemo: Map<number, Stone>, blinkMemo: Map<string, Stone[]>) : Stone[]{
-    const stoneStr = stones.map(s => s[0]).join(" ");
 
-    if(blinkMemo.has(stoneStr)) return blinkMemo.get(stoneStr);
+function blink(state: StoneState) : StoneState{
+    const nextState = new Map<number, number>();
 
-    stones = stones.map(s => singleStoneBlink(s, stoneMemo));
-    // now we can consolidate the stones
-    const newConfig =  stones.reduce((acc, stone) => {
-        if(stone.length === 2){
-            return [...acc, [stone[0]], [stone[1]]]
-        }
-        return [...acc, stone]
-    },[]);
-
-    blinkMemo.set(stoneStr, newConfig)
-    return newConfig;
+    // now for each stone in the state we need to do the action 
+    for(const [stone, count] of Array.from(state.entries())){
+        const res = applyRule(stone, count);
+        res.map(r =>  nextState.has(r.stone) 
+            ? nextState.set(r.stone, nextState.get(r.stone)+r.count) 
+            : nextState.set(r.stone, r.count))
+    }
+    return nextState;
 }
 
-const getStartingStores = () : Stone[] => input.split(" ").map(s => [Number(s)]);
+const getStartingStones = () : Stone[] => input.split(" ").map(s => Number(s));
 
-const toStartingStoneState = (stones : Stone[]) : StoneState => {
+const toState = (stones : Stone[]) : StoneState => {
     const state = new Map<number,number>();
 
     stones.map(s => {
-        if(state.has(s[0])){
-            state.set(s[0], state.get(s[0])+1);
+        if(state.has(s)){
+            state.set(s, state.get(s)+1);
             return;
         }
-        state.set(s[0], 1)
+        state.set(s, 1)
     });
+    return state;
 }
 
 export default function(){
-    let stones = getStartingStores();
-    const memo = new Map<string, Stone[]>();
-    const stoneMemo = new Map<number, Stone>();
-    for(let i = 0 ; i < 75 ; i++) {
-        stones = blink(stones, stoneMemo, memo);
-        console.log(i);
+    const stones = getStartingStones();
+    let state = toState(stones);
+
+    for(let i = 0 ; i < 75 ; i++){ 
+        state = blink(state);
     }
-    console.log(stones.length)
+    const val = Array.from(state.values()).reduce((acc, v) => acc + v,0) 
+    console.log("Part 2: ", val);
 }
