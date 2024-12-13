@@ -9,8 +9,7 @@ type Key = "A" | "B" | "Prize"
 type Game = {
   [K in Key]: Location
 }
-
-// for each game we need to figure out what the shortest path is to the prize -- if there is no path 
+type Location = [number, number]
 
 // solution -- matrix mul
 
@@ -32,7 +31,6 @@ function solve(game: Game): [number, number] | null {
   (-game.A[1] * game.Prize[0] + game.A[0] * game.Prize[1]) / d]
 }
 
-type Location = [number, number]
 async function parseInputFile(
   path: string
 ) {
