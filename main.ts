@@ -1,7 +1,7 @@
-import solution from "./day12/solution";
+import solution from "./day13/solution";
 
 function main(): void {
-    solution(); 
+    solution();
 }
 
 main();
