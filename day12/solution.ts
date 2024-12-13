@@ -9,9 +9,9 @@ type PositionHash = `${number}-${number}`
 type CartesianCoordinate = [number, number];
 
 type Plot = {
-    plant: Plant, 
-    plotInfo: PlotInfo[]
-    positions: Map<PositionHash, Position>
+  plant: Plant,
+  plotInfo: PlotInfo[]
+  positions: Map<PositionHash, Position>
 }
 
 type PlotInfo = {
@@ -22,106 +22,108 @@ type PlotInfo = {
 }
 
 const NEWLINE = '\n';
-const DIR_OFFSETS = [[0,1],[1,0],[0,-1],[-1,0]];
+const DOWN = [1, 0];
+const TOP = [-1, 0];
+const LEFT = [0, -1];
+const RIGHT = [0, 1];
+const DIR_OFFSETS = [TOP, DOWN, LEFT, RIGHT];
 
 const withinGarden = (position: Position, garden: Garden) => {
-    const [r, c] = position;
-    if (r < 0 || r >= garden.length) return false
-    if (c < 0 || c >= garden[0].length) return false
-    return true;
+  const [r, c] = position;
+  if (r < 0 || r >= garden.length) return false
+  if (c < 0 || c >= garden[0].length) return false
+  return true;
 }
 
 function getPlotInfo(garden: Garden, positions: Map<PositionHash, Position>, position: Position, plotInfo: PlotInfo) {
-    const [r, c] = position;
+  const [r, c] = position;
 
-    if(!positions.has(`${r}-${c}`)) return 
+  if (!positions.has(`${r}-${c}`)) return
 
-    if(!withinGarden(position, garden)) return 
+  if (!withinGarden(position, garden)) return
 
-    // mark visited
-    positions.delete(`${r}-${c}`)
+  // mark visited
+  positions.delete(`${r}-${c}`)
 
-    // calculate how many neighbours are of the same type and how many are different 
-    const validDirs = DIR_OFFSETS.filter(([dr, dc]) => withinGarden([r+dr, c+dc], garden))
-    const edges = 4 - validDirs.length;
+  // calculate how many neighbours are of the same type and how many are different 
+  const validDirs = DIR_OFFSETS.filter(([dr, dc]) => withinGarden([r + dr, c + dc], garden))
+  const edges = 4 - validDirs.length;
 
-    const neighbours = validDirs.filter(([dr, dc]) => garden[r][c] == garden[dr+r][dc+c]);
-    const freeEdge = edges + (validDirs.length - neighbours.length);
+  const neighbours = validDirs.filter(([dr, dc]) => garden[r][c] == garden[dr + r][dc + c]);
+  const freeEdge = edges + (validDirs.length - neighbours.length);
 
-    plotInfo.area++;
-    plotInfo.perimeter += freeEdge;
-    plotInfo.positions.push([r,c])
+  plotInfo.area++;
+  plotInfo.perimeter += freeEdge;
+  plotInfo.positions.push([r, c])
 
-    for(const [dr, dc] of neighbours){
-        getPlotInfo(garden, positions, [r+dr, c+dc], plotInfo)
-    }
-    return;
+  for (const [dr, dc] of neighbours) {
+    getPlotInfo(garden, positions, [r + dr, c + dc], plotInfo)
+  }
+  return;
 }
 
 function calculatePlotInfoOfPlants(garden: Garden, plot: Plot) {
-    while(plot.positions.size > 0){
-        // get the first position
-        const plotInfo = {
-          perimeter: 0,
-          area: 0,
-          edges: 0,
-          positions: [],
-        }
-        const positions = Array.from(plot.positions.values())
-        getPlotInfo(garden, plot.positions, positions[0], plotInfo);
-        plot.plotInfo.push(plotInfo)
+  while (plot.positions.size > 0) {
+    // get the first position
+    const plotInfo = {
+      perimeter: 0,
+      area: 0,
+      edges: 0,
+      positions: [],
     }
-    return;
+    const positions = Array.from(plot.positions.values())
+    getPlotInfo(garden, plot.positions, positions[0], plotInfo);
+    plot.plotInfo.push(plotInfo)
+  }
+  return;
 }
 
-const areEqual = (c1: CartesianCoordinate, c2: CartesianCoordinate) : boolean => c1[0] === c2[0] && c2[1] === c1[1];
+const areEqual = (c1: CartesianCoordinate, c2: CartesianCoordinate): boolean => c1[0] === c2[0] && c2[1] === c1[1];
 
-const findNextNode = (current: EdgeSegment, edges: EdgeSegment[]) : number | null => {
+const findNextNode = (current: EdgeSegment, edges: EdgeSegment[]): number | null => {
   // if there is a from node in the 
-  for(let i = 0 ; i < edges.length ; i++){
-    if(areEqual(current.to, edges[i].from)) return i;
-    if(areEqual(current.from, edges[i].to)) return i;
+  for (let i = 0; i < edges.length; i++) {
+    if (areEqual(current.to, edges[i].from)) return i;
+    if (areEqual(current.from, edges[i].to)) return i;
   }
   return null;
 }
 
 // given a list of coordinates we can then construct the edges 
-function constructEdges(edges: EdgeSegment[]) : EdgeSegment[] {
-  // lets keep popping stuff off the edge list until we get 
-  let sorted = [...edges]
+function constructEdges(edges: EdgeSegment[]): EdgeSegment[] {
+  let candidates = [...edges]
 
-  let node = sorted[0];
+  let fromEdge = candidates[0];
 
-  let constructed: EdgeSegment[] = [];
-  while(sorted.length > 0){
-    const next = findNextNode(node, sorted);
+  let mergedEdges: EdgeSegment[] = [];
 
-    if(next === null){
+  while (candidates.length > 0) {
+    const toEdgeIdx = findNextNode(fromEdge, candidates);
+
+    if (toEdgeIdx === null) {
       // then there is no edge in this list - we have created the edge
-      // pop a new node and then construct again
-      constructed = [...constructed, node];
-      node = sorted.pop()
+      mergedEdges = [...mergedEdges, fromEdge];
+      fromEdge = candidates.pop()
     } else {
+      // we can now merge the edges and then restart the search for the next edge to merge
+      const toEdge = candidates[toEdgeIdx];
 
-      // merge the node
-      if(areEqual(node.to, sorted[next].from)){
-        node.to = sorted[next].to;
+      if (areEqual(fromEdge.to, toEdge.from)) {
+        fromEdge.to = toEdge.to;
       } else {
-        node.from = sorted[next].from;
+        fromEdge.from = toEdge.from;
       }
-      sorted = sorted.filter((_,i) => i !== next);
-      
+      candidates = candidates.filter((_, i) => i !== toEdgeIdx);
     }
-    // now remove the node from the sorted list 
   }
-  return constructed
+  return mergedEdges
 }
 
-function getEdgeCoordinatesForPlot(edgePlants: Position[], garden: Garden) : EdgeSegment[]{
+function getEdgeCoordinatesForPlot(edgePlants: Position[], garden: Garden): EdgeSegment[] {
   return edgePlants.reduce((acc, e) => [...acc, ...getEdgeCoordinateForPosition(e, garden)], []);
 }
 
-type VerticalEdgeSegment = {
+type VerticalEdge = {
   type: "left" | "right",
 }
 
@@ -130,26 +132,25 @@ type Node = {
   to: CartesianCoordinate
 }
 
-type HorizontalEdgeSegment = {
+type HorizontalEdge = {
   type: "top" | "bottom",
-  from: CartesianCoordinate,
-  to: CartesianCoordinate
 }
-type EdgeSegment = (HorizontalEdgeSegment | VerticalEdgeSegment) & Node;
 
-function getEdgeCoordinateForPosition(position: Position, garden: Garden) : EdgeSegment[]{
+type EdgeSegment = (HorizontalEdge | VerticalEdge) & Node;
+
+function getEdgeCoordinateForPosition(position: Position, garden: Garden): EdgeSegment[] {
   // get edges  
   const edges: EdgeSegment[] = [];
   const maxY = garden.length;
 
   // top edge 
   const [r, c] = position;
-  let [offR, offC] = [-1,0]
+  let [offR, offC] = TOP
 
-  if(!withinGarden([r+offR, c+offC], garden) || garden[offR+r][offC+c] !== garden[r][c]) {
+  if (!withinGarden([r + offR, c + offC], garden) || garden[offR + r][offC + c] !== garden[r][c]) {
     // we have a top edge
-    const lCoord: CartesianCoordinate = [c, maxY-r];
-    const rCoord: CartesianCoordinate = [c+1, maxY-r];
+    const lCoord: CartesianCoordinate = [c, maxY - r];
+    const rCoord: CartesianCoordinate = [c + 1, maxY - r];
     edges.push({
       type: "top",
       from: lCoord,
@@ -159,13 +160,13 @@ function getEdgeCoordinateForPosition(position: Position, garden: Garden) : Edge
   }
 
   // bottom edge 
-  offR = 1;
-  offC = 0;
+  offR = DOWN[0];
+  offC = DOWN[1];
 
-  if(!(withinGarden([r+offR, c+offC], garden) && garden[offR+r][offC+c] === garden[r][c])) {
+  if (!(withinGarden([r + offR, c + offC], garden) && garden[offR + r][offC + c] === garden[r][c])) {
     // we have a bottom edge
-    const lCoord: CartesianCoordinate = [c, maxY-r-1];
-    const rCoord: CartesianCoordinate = [c+1, maxY-r-1];
+    const lCoord: CartesianCoordinate = [c, maxY - r - 1];
+    const rCoord: CartesianCoordinate = [c + 1, maxY - r - 1];
     edges.push({
       type: "bottom",
       from: lCoord,
@@ -174,12 +175,12 @@ function getEdgeCoordinateForPosition(position: Position, garden: Garden) : Edge
   }
 
   // left edge 
-  offR = 0;
-  offC = -1;
+  offR = LEFT[0];
+  offC = LEFT[1];
 
-  if(!(withinGarden([r+offR, c+offC], garden) && garden[offR+r][offC+c] === garden[r][c])) {
-    const tCoord: CartesianCoordinate = [c, maxY-r];
-    const bCoord: CartesianCoordinate = [c, maxY-r-1];
+  if (!(withinGarden([r + offR, c + offC], garden) && garden[offR + r][offC + c] === garden[r][c])) {
+    const tCoord: CartesianCoordinate = [c, maxY - r];
+    const bCoord: CartesianCoordinate = [c, maxY - r - 1];
 
     edges.push({
       type: "left",
@@ -189,12 +190,12 @@ function getEdgeCoordinateForPosition(position: Position, garden: Garden) : Edge
   }
 
   // right edge 
-  offR = 0;
-  offC = 1;
+  offR = RIGHT[0];
+  offC = RIGHT[1];
 
-  if(!(withinGarden([r+offR, c+offC], garden) && garden[offR+r][offC+c] === garden[r][c])) {
-    const tCoord: CartesianCoordinate = [c+1, maxY-r];
-    const bCoord: CartesianCoordinate = [c+1, maxY-r-1];
+  if (!(withinGarden([r + offR, c + offC], garden) && garden[offR + r][offC + c] === garden[r][c])) {
+    const tCoord: CartesianCoordinate = [c + 1, maxY - r];
+    const bCoord: CartesianCoordinate = [c + 1, maxY - r - 1];
     edges.push({
       type: "right",
       to: tCoord,
@@ -212,18 +213,18 @@ async function parseInputFile(
   const inputRows = str.split(NEWLINE).map((row) => row.trimEnd());
   const plantSet = new Map<Plant, Plot>();
 
-  const map = inputRows.map((r,i) => {
+  const map = inputRows.map((r, i) => {
     const row = r.split("")
-      .map((p,j) => {
-        if(!plantSet.has(p)){
-            plantSet.set(p, {
-                plant: p, 
-                plotInfo: [],
-                positions: new Map<PositionHash, Position>()
-            })
+      .map((p, j) => {
+        if (!plantSet.has(p)) {
+          plantSet.set(p, {
+            plant: p,
+            plotInfo: [],
+            positions: new Map<PositionHash, Position>()
+          })
         }
         const plot = plantSet.get(p);
-        plot.positions.set(`${i}-${j}`, [i,j])
+        plot.positions.set(`${i}-${j}`, [i, j])
         return p;
       });
     return row;
@@ -236,8 +237,8 @@ export default function () {
     const plants = Array.from(plot.keys());
     plants.map(p => calculatePlotInfoOfPlants(map, plot.get(p)))
     const price = plants
-      .map(p => plot.get(p).plotInfo.reduce((acc, i) => acc + i.area*i.perimeter, 0))
-      .reduce((acc, p) => acc + p,0)
+      .map(p => plot.get(p).plotInfo.reduce((acc, i) => acc + i.area * i.perimeter, 0))
+      .reduce((acc, p) => acc + p, 0)
 
     console.log("OLD PRICE: ", price);
 
@@ -249,18 +250,14 @@ export default function () {
         const left = edges.filter(e => e.type === "left");
         const right = edges.filter(e => e.type === "right");
 
-        const constructedTop = constructEdges([...top]);
-        const constructedBot = constructEdges([...bot]);
-        const constructedLeft = constructEdges([...left]);
-        const constructedRight = constructEdges([...right]);
-
+        const constructedTop = constructEdges(top);
+        const constructedBot = constructEdges(bot);
+        const constructedLeft = constructEdges(left);
+        const constructedRight = constructEdges(right);
         const numEdges = constructedBot.length + constructedTop.length + constructedLeft.length + constructedRight.length;
-
-        i.edges = numEdges;
-
         return numEdges * i.area;
-      }).reduce((acc, price)=> acc + price, 0))
-      .reduce((acc, price) => acc + price ,0);
+      }).reduce((acc, price) => acc + price, 0))
+      .reduce((acc, price) => acc + price, 0);
 
     console.log("NEW PRICE: ", newPrice);
   });
