@@ -1,7 +1,7 @@
-import solution from "./day13/solution";
+import solution from "./day14/solution";
 
-function main(): void {
-    solution();
+function main() {
+    solution().then(() => console.log("finished"));
 }
 
 main();
