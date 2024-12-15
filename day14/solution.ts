@@ -4,8 +4,6 @@ const RobotRegex: RegExp = /p=(-?\d+,-?\d+) v=(-?\d+,-?\d+)/;
 
 type Location = [number, number]
 
-type Velocity = [number, number]
-
 type Robot = {
   start: Location,
   velocity: Velocity
@@ -43,17 +41,6 @@ async function parseInputFile(
   path: string
 ) {
   const str = await fs.readFile(path, "ascii");
-  const robots = str
-    .split(SEP)
-    .map((r): Robot => {
-      const robotStr = r.trimEnd().match(RobotRegex);
-      const [x, y] = robotStr[1].split(",").map(x => Number(x));
-      const [vx, vy] = robotStr[2].split(",").map(x => Number(x));
-      return {
-        start: [x, y],
-        velocity: [vx, vy]
-      }
-    });
   return robots;
 }
 
@@ -100,50 +87,7 @@ const getUniqueLocations = (location: Location[]) => {
   return loc;
 }
 
-const getGridRepresentation = (grid: boolean[][]) => grid
-  .map(r => r.map(p => p ? "*" : " ").join(""))
-  .join("\n");
-
 export default async function () {
-  const robots = await parseInputFile("day14/input.txt");
-  const count = [0, 0, 0, 0];
-  const positions = robots
-    .map(r => getPosition(r, 100));
-  positions
-    .map(p => getQuadrants(p))
-    .filter(n => n !== null)
-    .map(q => {
-      count[q - 1]++
-      return q;
-    })
+  const robots = await parseInputFile("day15/input.txt");
 
-  console.log("PART 1: ", count.reduce((acc, c) => acc * (c > 0 ? c : 1), 1));
-
-  let t = 0;
-  while (t < 10000) {
-    const locs = robots.map(r => getPosition(r, t));
-    let unique = getUniqueLocations(locs);
-    let maxPatch = 0;
-
-    while (unique.length > 0) {
-      const start = unique[0];
-      const s = findConnectedPatch(start, unique, new Set<LocationKey>());
-      // now we have to construct a new unique set that does not include the connected patch
-      if (s.length > maxPatch) maxPatch = s.length;
-      unique = unique.filter(([x0, y0]) => s.filter(([x1, y1]) => x1 === x0 && y0 === y1).length === 0);
-
-    }
-
-    if (maxPatch > 100) {
-      console.log(maxPatch)
-      const grid = getGrid(locs);
-      const gridStr = getGridRepresentation(grid);
-      console.log("*".repeat(100));
-      console.log(gridStr);
-      console.log("*".repeat(100));
-      console.log("BLOB OF SIZE > 50 FOUND -- T: ", t);
-      console.log("*".repeat(100));
-    }
-    t++
-  }
 }
