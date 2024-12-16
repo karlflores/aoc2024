@@ -1,4 +1,4 @@
-import solution from "./day15/solution";
+import solution from "./day16/solution";
 
 function main() {
     solution().then(() => console.log("finished"));
