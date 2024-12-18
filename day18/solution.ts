@@ -172,14 +172,13 @@ const constructPath = (m: Map<LocationKey, Location>, maze: MazeState) => {
 
 export default async function () {
   const maze = await parseInputFile("day18/input.txt");
-  maze.setMaxBytes(2960);
-  const [path, distances] = astar(maze);
-  console.log()
-  console.log(distances.get(`${70}-${70}`));
+  maze.setMaxBytes(1024);
+  const [_, distances] = astar(maze);
+  console.log("Part 1:", distances.get(`${70}-${70}`));
 
-  const num = binarySearch(maze, 1, maze.allCorrupted.length - 1);
-  console.log(num)
+  const num = binarySearch(maze, 1025, maze.allCorrupted.length - 1);
   maze.setMaxBytes(num);
-  console.log(maze.corrupted[maze.corrupted.length - 1])
+  const [y, x] = maze.corrupted[maze.corrupted.length - 1];
+  console.log("Byte number:", num, `-- (${x},${y})`);
 
 }
