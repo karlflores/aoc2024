@@ -43,14 +43,13 @@ const getAllCombinations = (towel: Towel, stripes: Stripe[]) => {
   const dp = `${towel} `.split("").map(() => 0);
   dp[0] = 1;
 
-  for (let i = 1; i <= towel.length; i++) {
-
-    const target = towel.substring(0, i);
-    const candidates = stripes.filter(t => target.endsWith(t))
-    for (const candidate of candidates) {
-      dp[target.length] += dp[target.length - candidate.length];
-    }
-  }
+  towel
+    .split("")
+    .map((_, i) => towel.substring(0, i + 1))
+    .map(target => {
+      stripes.filter(t => target.endsWith(t))
+        .map(c => dp[target.length] += dp[target.length - c.length]);
+    })
 
   return dp[towel.length];
 }
@@ -68,5 +67,6 @@ export default async function () {
   // now we have the possible towels we need to work out all combinations that lead to
   // that towel
 
-  console.log(p.reduce((acc, c) => acc + c, 0));
+  console.log("part 1:", p.length);
+  console.log("part 2:", p.reduce((acc, c) => acc + c, 0));
 }
