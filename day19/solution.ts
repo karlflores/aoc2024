@@ -36,66 +36,37 @@ const canConstruct = (towel: Towel, stripes: Stripe[]) => {
     }
   }
 
-  return false
+  return false;
 }
 
 const getAllCombinations = (towel: Towel, stripes: Stripe[]) => {
-  const filtered = stripes.filter(s => towel.includes(s));
+  const dp = `${towel} `.split("").map(() => 0);
+  dp[0] = 1;
 
-  const pq = new Heap<string>((a, b) => a.length - b.length || a.localeCompare(b));
-  const processed = new Set<string>();
-  pq.add("");
-  let n = 0;
+  for (let i = 1; i <= towel.length; i++) {
 
-  while (pq.length > 0) {
-    const candidate = pq.pop();
-    processed.add(candidate);
-    // add the candidate to the numPossibilities dict
-
-    if (towel === candidate) {
-      n++;
-      while (pq.peek() == towel) {
-        n++;
-        pq.pop();
-      }
-
-      return n;
-    }
-
-    for (const f of filtered) {
-
-      // construct the next string to test 
-      const next = `${candidate}${f}`;
-      // here we have constructed a next candidate we have seen before therefore we can increment 
-      // count
-      if (towel.startsWith(next) && !processed.has(next)) {
-        pq.push(next);
-      }
+    const target = towel.substring(0, i);
+    const candidates = stripes.filter(t => target.endsWith(t))
+    for (const candidate of candidates) {
+      dp[target.length] += dp[target.length - candidate.length];
     }
   }
 
-  return 0;
+  return dp[towel.length];
 }
+
 
 export default async function () {
   const [stripes, towels] = await parseInputFile("day19/input.txt");
 
-  const p = towels.filter((t, i) => {
-    const y = canConstruct(t, stripes)
-    if (y) console.log(i, t)
+  const p = towels.map((t, i) => {
+    const y = getAllCombinations(t, stripes)
+    console.log(i, t, y)
     return y;
-  });
-
-  console.log("Possible towels:", p.length);
-
-  const possible = p.map((t, i) => {
-    const p = getAllCombinations(t, stripes)
-    console.log(i, "string:", t, p)
-    return p;
-  });
+  }).filter(t => t > 0);
 
   // now we have the possible towels we need to work out all combinations that lead to
   // that towel
 
-  console.log(possible.reduce((acc, c) => acc + c, 0));
+  console.log(p.reduce((acc, c) => acc + c, 0));
 }
