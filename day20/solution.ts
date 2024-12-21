@@ -223,5 +223,4 @@ export default async function () {
 
   console.log(savings.filter(s => s >= 100).length)
   console.log(path.length)
-  console.log(maze.getMazeRepresentation(path))
 }
